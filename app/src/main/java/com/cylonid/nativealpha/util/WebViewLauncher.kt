@@ -13,9 +13,10 @@ import java.lang.NullPointerException
 
 object WebViewLauncher {
     @JvmStatic
-    fun startWebView(webapp: WebApp, c: Context) {
+    @JvmOverloads
+    fun startWebView(webapp: WebApp, c: Context, url: String? = null) {
         try {
-            c.startActivity(createWebViewIntent(webapp, c))
+            c.startActivity(createWebViewIntent(webapp, c, url))
         } catch (e: NullPointerException) {
             NotificationUtils.showInfoSnackbar(
                 c as AppCompatActivity,
@@ -27,9 +28,10 @@ object WebViewLauncher {
     }
 
     @JvmStatic
-    fun startWebViewInNewProcess(webapp: WebApp, a: Activity) {
+    @JvmOverloads
+    fun startWebViewInNewProcess(webapp: WebApp, a: Activity, url: String? = null) {
         try {
-            ProcessPhoenix.triggerRebirth(a, createWebViewIntent(webapp, a))
+            ProcessPhoenix.triggerRebirth(a, createWebViewIntent(webapp, a, url))
         } catch (e: NullPointerException) {
             NotificationUtils.showInfoSnackbar(
                 a,
@@ -41,7 +43,8 @@ object WebViewLauncher {
     }
 
     @JvmStatic
-    fun createWebViewIntent(webapp: WebApp, c: Context?): Intent? {
+    @JvmOverloads
+    fun createWebViewIntent(webapp: WebApp, c: Context?, url: String? = null): Intent? {
         val packageName = "com.cylonid.nativealpha"
         var webview_class: Class<*>? = null
         try {
@@ -59,6 +62,9 @@ object WebViewLauncher {
         val intent = Intent(c, webview_class)
         if (webapp.isBiometricProtection) intent.flags = Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
         intent.putExtra(Const.INTENT_WEBAPPID, webapp.ID)
+        if (url != null) {
+            intent.putExtra(Const.INTENT_URL, url)
+        }
         intent.data = Uri.parse(webapp.baseUrl + webapp.ID)
         intent.action = Intent.ACTION_VIEW
         return intent

@@ -141,6 +141,16 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
         }
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String url = intent.getStringExtra(Const.INTENT_URL);
+        if (url != null && !url.isEmpty() && wv != null) {
+            loadURL(wv, url);
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private void setupWebView() {
 
@@ -172,7 +182,10 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
 
-        String url = webapp.getBaseUrl();
+        String url = getIntent().getStringExtra(Const.INTENT_URL);
+        if (url == null || url.isEmpty()) {
+            url = webapp.getBaseUrl();
+        }
 
         wv = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
@@ -1015,5 +1028,3 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
         }
     }
 }
-
-

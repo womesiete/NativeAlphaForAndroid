@@ -41,6 +41,7 @@
 <!--        Make sure to also copy changes to WebViewActivity in build.gradle-->
         <activity
             android:name=".WebViewActivity"
+            android:exported="true"
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize"
             android:icon="@mipmap/native_alpha"
