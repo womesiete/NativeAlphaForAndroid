@@ -12,6 +12,8 @@ import com.cylonid.nativealpha.util.Const;
 import java.nio.charset.StandardCharsets;
 
 public class AutomationCommandReceiver extends BroadcastReceiver {
+
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || !Const.AUTOMATION_ACTION_COMMAND.equals(intent.getAction())) {
@@ -22,13 +24,28 @@ public class AutomationCommandReceiver extends BroadcastReceiver {
 
         AutomationCommand command = AutomationCommandParser.parse(intent);
 
-        if (isBlank(command.getCommandName())) {
-            AutomationResultBroadcaster.broadcastFailureFromIntent(
+        if (!isBlank(command.getExtra(Const.AUTOMATION_EXTRA_PAYLOAD_PARSE_ERROR))) {
+            AutomationResultBroadcaster.broadcast(
                     context,
-                    intent,
-                    "failed",
-                    "missing_command",
-                    "No automation command was supplied."
+                    command,
+                    AutomationResult.failure(
+                            "failed",
+                            "invalid_payload_json",
+                            command.getExtra(Const.AUTOMATION_EXTRA_PAYLOAD_PARSE_ERROR)
+                    )
+            );
+            return;
+        }
+
+        if (isBlank(command.getCommandName())) {
+            AutomationResultBroadcaster.broadcast(
+                    context,
+                    command,
+                    AutomationResult.failure(
+                            "failed",
+                            "missing_command",
+                            "No automation command was supplied."
+                    )
             );
             return;
         }
@@ -46,7 +63,7 @@ public class AutomationCommandReceiver extends BroadcastReceiver {
             return;
         }
 
-        if (!validatePasscode(context, intent, command)) {
+        if (!validatePasscode(context, command)) {
             return;
         }
 
@@ -101,13 +118,10 @@ public class AutomationCommandReceiver extends BroadcastReceiver {
         AutomationCommandRouter.route(context.getApplicationContext(), command, targetWebApp);
     }
 
-    private boolean validatePasscode(Context context, Intent intent, AutomationCommand command) {
+    private boolean validatePasscode(Context context, AutomationCommand command) {
         GlobalSettings settings = DataManager.getInstance().getSettings();
         String configuredPasscode = settings.getAutomationPasscode();
-        String suppliedPasscode = AutomationCommandParser.getStringExtra(
-                intent,
-                Const.AUTOMATION_EXTRA_PASSCODE
-        );
+        String suppliedPasscode = command.getExtra(Const.AUTOMATION_EXTRA_PASSCODE);
 
         if (isBlank(configuredPasscode)) {
             AutomationResultBroadcaster.broadcast(

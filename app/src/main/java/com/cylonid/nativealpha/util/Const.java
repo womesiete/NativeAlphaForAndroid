@@ -27,6 +27,9 @@ public class Const {
 
     public static final String AUTOMATION_ACTION_COMMAND = "com.cylonid.nativealpha.action.AUTOMATION_COMMAND";
 
+    public static final String AUTOMATION_EXTRA_PAYLOAD = "automation_payload";
+    public static final String AUTOMATION_EXTRA_PAYLOAD_PARSE_ERROR = "automation_payload_parse_error";
+
     public static final String AUTOMATION_EXTRA_COMMAND = "automation_command";
     public static final String AUTOMATION_EXTRA_PASSCODE = "automation_passcode";
     public static final String AUTOMATION_EXTRA_REQUEST_ID = "request_id";
