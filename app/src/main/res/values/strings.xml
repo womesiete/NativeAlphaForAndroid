@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">Native Alpha</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
@@ -88,7 +88,7 @@
     <string name="permission_location_rationale">If you want Web Apps to be able to retrieve your location, you can Native Alpha grant the permission to access the location. You can decide to grant the permission for every Web App individually.</string>
     <string name="permission_storage_rationale">If you want Native Alpha Web Apps to be able to download files, you have to accept the storage permission request.</string>
     <string name="file_download">File is being downloaded…</string>
-    <string name="file_download_failed">Could not download file.</string>
+    <string name="file_download_failed" tools:ignore="MissingTranslation">Could not download file.</string>
     <string name="custom_icon">Select custom icon</string>
     <string name="show_progress_bar_during_page_load">Show progress bar during page load</string>
     <string name="user_agent">User Agent</string>
@@ -181,6 +181,12 @@
     <string name="entry_already_exists">This entry already exists.</string>
     <string name="support_liberapay">Support me on Liberapay</string>
     <string name="adblock_warning_text">Your current ad blocker settings may cause problems or crashes. Unfortunately, not all filter lists work on every device.\n\nIt is recommended to clear the filter lists and repopulate them as a test.</string>
-    <string name="warning">Warning</string>
+    <string name="warning" tools:ignore="MissingTranslation">Warning</string>
+
+    <string name="automation_passcode" tools:ignore="MissingTranslation">Automation passcode</string>
+    <string name="automation_passcode_hint" tools:ignore="MissingTranslation">Tasker automation commands must include this exact passcode. Leave blank to reject all automation commands.</string>
+    <string name="webapp_section_automation" tools:ignore="MissingTranslation">Automation</string>
+    <string name="allow_automation_intents" tools:ignore="MissingTranslation">Allow automation intents</string>
+    <string name="automation_intents_warning" tools:ignore="MissingTranslation">Allows external Tasker intents to control this Web App after the global automation passcode is supplied. Commands can zoom, scroll, run JavaScript, find visible text, and click matching elements.</string>
 
 </resources>

@@ -23,6 +23,9 @@ class GlobalSettingsDeserializer : JsonDeserializer<GlobalSettings> {
                 context.deserialize<WebApp>(obj.get("globalWebApp"), WebApp::class.java)
             val settings = Gson().fromJson(obj, GlobalSettings::class.java)
             settings.globalWebApp = globalWebApp
+            if (!obj.has("automationPasscode") || obj.get("automationPasscode").isJsonNull) {
+                settings.automationPasscode = ""
+            }
 
             return settings
         }

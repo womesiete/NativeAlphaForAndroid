@@ -171,6 +171,7 @@ class WebAppSettingsActivity : ToolbarBaseActivity<WebappSettingsBinding>() {
         binding.switchOverrideGlobal.visibility = View.GONE
         binding.sectionSSL.visibility = View.GONE
         binding.sectionSandbox.visibility = View.GONE
+        binding.sectionAutomation.visibility = View.GONE
         binding.labelTitle.visibility = View.GONE
         binding.labelEditableBaseUrl.visibility = View.GONE
         binding.textBaseUrl.visibility = View.GONE

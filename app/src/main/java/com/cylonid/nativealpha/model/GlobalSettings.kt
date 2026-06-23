@@ -12,7 +12,8 @@ data class GlobalSettings(
     var themeId: Int = 0,
     var globalWebApp: WebApp = WebApp("about:blank", Int.MAX_VALUE, Const.getDefaultAdBlockConfig()),
     var alwaysShowSoftwareButtons: Boolean = false,
-    var clear_cookies: Boolean = false
+    var clear_cookies: Boolean = false,
+    var automationPasscode: String = ""
 ) {
 
     fun setClearCookies(clear_cookies: Boolean) {

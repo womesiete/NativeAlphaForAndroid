@@ -89,9 +89,20 @@ import io.github.edsuns.adfilter.AdFilter;
 import io.github.edsuns.adfilter.Filter;
 import pub.devrel.easypermissions.EasyPermissions;
 
+import com.cylonid.nativealpha.automation.AutomationCommand;
+import com.cylonid.nativealpha.automation.AutomationCommandRouter;
+import com.cylonid.nativealpha.automation.AutomationResult;
+import com.cylonid.nativealpha.automation.AutomationResultBroadcaster;
+import com.cylonid.nativealpha.automation.AutomationWebViewHost;
+import com.cylonid.nativealpha.automation.AutomationWebViewRegistry;
+import com.google.gson.Gson;
+import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+
 import static com.cylonid.nativealpha.util.Const.CODE_OPEN_FILE;
 
-public class WebViewActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks {
+public class WebViewActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks, AutomationWebViewHost {
 
     //Constants for touchlistener
     private static final int NONE = 0;
@@ -118,6 +129,10 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
 
     private AdblockProviderApiHelper adblockProviderApiHelper;
     private AdblockLifecycleHelper adblockLifecycleHelper;
+
+    private boolean automationWebViewReady = false;
+    private boolean automationDomReady = false;
+    private final Gson automationGson = new Gson();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -393,6 +408,10 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
                 return false;
             }
         });
+
+        automationWebViewReady = true;
+        AutomationWebViewRegistry.register(webappID, this);
+        AutomationCommandRouter.onHostReady(webappID);
     }
 
     @SuppressLint("RequiresFeature")
@@ -560,6 +579,13 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
         wv.resumeTimers();
         this.setDarkModeIfNeeded();
 
+        if (automationWebViewReady) {
+            AutomationWebViewRegistry.markResumed(webappID, this);
+            AutomationCommandRouter.onHostReady(webappID);
+            if (automationDomReady) {
+                AutomationCommandRouter.onDomReady(webappID);
+            }
+        }
         
         if(webapp.isBiometricProtection()) {
             View fullActivityView = findViewById(R.id.webviewActivity);
@@ -577,6 +603,8 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
     protected void onPause() {
         super.onPause();
 
+        AutomationWebViewRegistry.markPaused(webappID, this);
+
         wv.evaluateJavascript("document.querySelectorAll('audio').forEach(x => x.pause());document.querySelectorAll('video').forEach(x => x.pause());", null);
         wv.onPause();
         wv.pauseTimers();
@@ -591,6 +619,12 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        AutomationWebViewRegistry.unregister(webappID, this);
+        super.onDestroy();
+    }
+
     private void reload() {
         reload_handler.postDelayed(() -> {
             currently_reloading = true;
@@ -601,6 +635,441 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
 
     public WebView getWebView() {
         return wv;
+    }
+
+    @Override
+    public int getAutomationWebAppId() {
+        return webappID;
+    }
+
+    @Override
+    public boolean isAutomationWebViewReady() {
+        return automationWebViewReady && wv != null;
+    }
+
+    @Override
+    public boolean isAutomationDomReady() {
+        return isAutomationWebViewReady() && automationDomReady;
+    }
+
+    @Override
+    public void executeAutomationCommand(AutomationCommand command) {
+        runOnUiThread(() -> {
+            try {
+                executeAutomationCommandOnUiThread(command);
+            } catch (Exception e) {
+                finishAutomationCommand(
+                        command,
+                        AutomationResult.failure(
+                                "failed",
+                                "execution_exception",
+                                e.getMessage()
+                        )
+                );
+            }
+        });
+    }
+
+    private void executeAutomationCommandOnUiThread(AutomationCommand command) {
+        if (wv == null) {
+            finishAutomationCommand(
+                    command,
+                    AutomationResult.failure(
+                            "failed",
+                            "webview_not_ready",
+                            "WebView is not ready."
+                    )
+            );
+            return;
+        }
+
+        switch (command.getCommandName()) {
+            case Const.AUTOMATION_COMMAND_ZOOM_IN:
+                executeAutomationZoomIn(command);
+                break;
+            case Const.AUTOMATION_COMMAND_ZOOM_OUT:
+                executeAutomationZoomOut(command);
+                break;
+            case Const.AUTOMATION_COMMAND_ZOOM_BY:
+                executeAutomationZoomBy(command);
+                break;
+            case Const.AUTOMATION_COMMAND_SCROLL_BY:
+                executeAutomationScrollBy(command);
+                break;
+            case Const.AUTOMATION_COMMAND_SCROLL_TO:
+                executeAutomationScrollTo(command);
+                break;
+            case Const.AUTOMATION_COMMAND_RUN_JS:
+                executeAutomationRunJs(command);
+                break;
+            case Const.AUTOMATION_COMMAND_FIND_TEXT:
+                executeAutomationFindText(command);
+                break;
+            case Const.AUTOMATION_COMMAND_CLICK_TEXT:
+                executeAutomationClickText(command);
+                break;
+            default:
+                finishAutomationCommand(
+                        command,
+                        AutomationResult.failure(
+                                "failed",
+                                "unknown_command",
+                                "Unsupported automation command."
+                        )
+                );
+        }
+    }
+
+    private void executeAutomationZoomIn(AutomationCommand command) {
+        boolean changed = wv.zoomIn();
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("completed")
+                        .put("changed", changed)
+                        .put("scale", wv.getScale())
+        );
+    }
+
+    private void executeAutomationZoomOut(AutomationCommand command) {
+        boolean changed = wv.zoomOut();
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("completed")
+                        .put("changed", changed)
+                        .put("scale", wv.getScale())
+        );
+    }
+
+    private void executeAutomationZoomBy(AutomationCommand command) {
+        float factor = (float) command.getDoubleExtra(Const.AUTOMATION_EXTRA_ZOOM_FACTOR, 1.0d);
+        wv.zoomBy(factor);
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("completed")
+                        .put("zoom_factor", factor)
+                        .put("scale", wv.getScale())
+        );
+    }
+
+    private void executeAutomationScrollBy(AutomationCommand command) {
+        int dx = resolveAutomationScrollAmount(
+                command.getDoubleExtra(Const.AUTOMATION_EXTRA_DX, 0.0d),
+                command.getExtra(Const.AUTOMATION_EXTRA_SCROLL_UNIT, "px"),
+                wv.getWidth()
+        );
+        int dy = resolveAutomationScrollAmount(
+                command.getDoubleExtra(Const.AUTOMATION_EXTRA_DY, 0.0d),
+                command.getExtra(Const.AUTOMATION_EXTRA_SCROLL_UNIT, "px"),
+                wv.getHeight()
+        );
+
+        wv.scrollBy(dx, dy);
+
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("completed")
+                        .put("dx_applied", dx)
+                        .put("dy_applied", dy)
+                        .put("scroll_x", wv.getScrollX())
+                        .put("scroll_y", wv.getScrollY())
+        );
+    }
+
+    private void executeAutomationScrollTo(AutomationCommand command) {
+        int x = resolveAutomationScrollAmount(
+                command.getDoubleExtra(Const.AUTOMATION_EXTRA_X, wv.getScrollX()),
+                command.getExtra(Const.AUTOMATION_EXTRA_SCROLL_UNIT, "px"),
+                wv.getWidth()
+        );
+        int y = resolveAutomationScrollAmount(
+                command.getDoubleExtra(Const.AUTOMATION_EXTRA_Y, wv.getScrollY()),
+                command.getExtra(Const.AUTOMATION_EXTRA_SCROLL_UNIT, "px"),
+                wv.getHeight()
+        );
+
+        wv.scrollTo(x, y);
+
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("completed")
+                        .put("scroll_x", wv.getScrollX())
+                        .put("scroll_y", wv.getScrollY())
+        );
+    }
+
+    private int resolveAutomationScrollAmount(double value, String unit, int viewportPixels) {
+        if ("viewport".equalsIgnoreCase(unit)) {
+            return (int) Math.round(value * viewportPixels);
+        }
+        return (int) Math.round(value);
+    }
+
+    private void executeAutomationRunJs(AutomationCommand command) {
+        String js = command.getExtra(Const.AUTOMATION_EXTRA_JS);
+        wv.evaluateJavascript(js, null);
+
+        finishAutomationCommand(
+                command,
+                AutomationResult.success("dispatched")
+                        .put("js_length", js == null ? 0 : js.length())
+        );
+    }
+
+    private void executeAutomationFindText(AutomationCommand command) {
+        String text = command.getExtra(Const.AUTOMATION_EXTRA_TEXT);
+        String script = buildAutomationTextScript(text, false, false);
+
+        wv.evaluateJavascript(script, value -> {
+            Map<String, Object> result = parseAutomationJsObject(value);
+            addAutomationCoordinates(result);
+
+            if (!automationResultFound(result)) {
+                finishAutomationCommand(
+                        command,
+                        AutomationResult.failure(
+                                        "completed",
+                                        "text_not_found",
+                                        "No exact visible text match was found."
+                                )
+                                .putAll(result)
+                );
+                return;
+            }
+
+            finishAutomationCommand(
+                    command,
+                    AutomationResult.success("completed")
+                            .putAll(result)
+            );
+        });
+    }
+
+    private void executeAutomationClickText(AutomationCommand command) {
+        String text = command.getExtra(Const.AUTOMATION_EXTRA_TEXT);
+        boolean scrollIntoView = command.getBooleanExtra(
+                Const.AUTOMATION_EXTRA_SCROLL_INTO_VIEW,
+                true
+        );
+        String script = buildAutomationTextScript(text, true, scrollIntoView);
+
+        wv.evaluateJavascript(script, value -> {
+            Map<String, Object> result = parseAutomationJsObject(value);
+            addAutomationCoordinates(result);
+
+            if (!automationResultFound(result)) {
+                finishAutomationCommand(
+                        command,
+                        AutomationResult.failure(
+                                        "completed",
+                                        "text_not_found",
+                                        "No exact visible text match was found."
+                                )
+                                .putAll(result)
+                );
+                return;
+            }
+
+            if (!automationResultClicked(result)) {
+                finishAutomationCommand(
+                        command,
+                        AutomationResult.failure(
+                                        "failed",
+                                        "click_failed",
+                                        "Text was found, but the click was not dispatched."
+                                )
+                                .putAll(result)
+                );
+                return;
+            }
+
+            finishAutomationCommand(
+                    command,
+                    AutomationResult.success("completed")
+                            .putAll(result)
+            );
+        });
+    }
+
+    private String buildAutomationTextScript(String text, boolean shouldClick, boolean shouldScroll) {
+        String targetJson = automationGson.toJson(text == null ? "" : text);
+
+        return """
+				(function(target, shouldClick, shouldScroll) {
+					function normalize(value) {
+						return String(value || '')
+							.replace(new RegExp(String.fromCharCode(160), 'g'), ' ')
+							.replace(/\\s+/g, ' ')
+							.trim();
+					}
+
+					function isVisible(element) {
+						if (!element || element.nodeType !== Node.ELEMENT_NODE) {
+							return false;
+						}
+
+						var style = window.getComputedStyle(element);
+						if (style.display === 'none' || style.visibility === 'hidden') {
+							return false;
+						}
+
+						var rect = element.getBoundingClientRect();
+						return rect.width > 0 && rect.height > 0;
+					}
+
+					function findFirstExactTextElement(targetText) {
+						var root = document.body || document.documentElement;
+						if (!root) {
+							return null;
+						}
+
+						var normalizedTarget = normalize(targetText);
+						var walker = document.createTreeWalker(
+							root,
+							NodeFilter.SHOW_TEXT,
+							{
+								acceptNode: function(node) {
+									if (normalize(node.nodeValue) !== normalizedTarget) {
+										return NodeFilter.FILTER_REJECT;
+									}
+									if (!isVisible(node.parentElement)) {
+										return NodeFilter.FILTER_REJECT;
+									}
+									return NodeFilter.FILTER_ACCEPT;
+								}
+							}
+						);
+
+						var match = walker.nextNode();
+						return match ? match.parentElement : null;
+					}
+
+					var element = findFirstExactTextElement(target);
+					if (!element) {
+						return JSON.stringify({
+							found: false,
+							clicked: false
+						});
+					}
+
+					if (shouldScroll && element.scrollIntoView) {
+						element.scrollIntoView({
+							block: 'center',
+							inline: 'center'
+						});
+					}
+
+					var rect = element.getBoundingClientRect();
+					var clicked = false;
+
+					if (shouldClick) {
+						element.click();
+						clicked = true;
+					}
+
+					return JSON.stringify({
+						found: true,
+						clicked: clicked,
+						text: normalize(element.innerText || element.textContent || ''),
+						tag: element.tagName || '',
+						id: element.id || '',
+						class_name: String(element.className || ''),
+						rect: {
+							left: rect.left,
+							top: rect.top,
+							right: rect.right,
+							bottom: rect.bottom,
+							width: rect.width,
+							height: rect.height
+						},
+						viewport: {
+							width: window.innerWidth,
+							height: window.innerHeight
+						}
+					});
+				})(%s, %s, %s);
+				""".formatted(
+                targetJson,
+                shouldClick ? "true" : "false",
+                shouldScroll ? "true" : "false"
+        );
+    }
+
+    private Map<String, Object> parseAutomationJsObject(String value) {
+        try {
+            String decoded = JsonParser.parseString(value).getAsString();
+            Type type = new TypeToken<Map<String, Object>>() {}.getType();
+            Map<String, Object> parsed = automationGson.fromJson(decoded, type);
+            return parsed == null ? new HashMap<>() : parsed;
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("found", false);
+            error.put("parse_error", e.getMessage());
+            error.put("raw_value", value);
+            return error;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addAutomationCoordinates(Map<String, Object> result) {
+        if (!automationResultFound(result)) {
+            return;
+        }
+
+        Object rectObject = result.get("rect");
+        Object viewportObject = result.get("viewport");
+        if (!(rectObject instanceof Map) || !(viewportObject instanceof Map)) {
+            return;
+        }
+
+        Map<String, Object> rect = (Map<String, Object>) rectObject;
+        Map<String, Object> viewport = (Map<String, Object>) viewportObject;
+
+        double viewportWidth = automationDouble(viewport.get("width"), 0.0d);
+        double viewportHeight = automationDouble(viewport.get("height"), 0.0d);
+        if (viewportWidth <= 0.0d || viewportHeight <= 0.0d) {
+            return;
+        }
+
+        double centerCssX = automationDouble(rect.get("left"), 0.0d)
+                + automationDouble(rect.get("width"), 0.0d) / 2.0d;
+        double centerCssY = automationDouble(rect.get("top"), 0.0d)
+                + automationDouble(rect.get("height"), 0.0d) / 2.0d;
+
+        double webViewX = centerCssX * wv.getWidth() / viewportWidth;
+        double webViewY = centerCssY * wv.getHeight() / viewportHeight;
+
+        int[] location = new int[2];
+        wv.getLocationOnScreen(location);
+
+        Map<String, Object> coordinates = new HashMap<>();
+        coordinates.put("webview_x", webViewX);
+        coordinates.put("webview_y", webViewY);
+        coordinates.put("screen_x", location[0] + webViewX);
+        coordinates.put("screen_y", location[1] + webViewY);
+
+        result.put("coordinates", coordinates);
+    }
+
+    private boolean automationResultFound(Map<String, Object> result) {
+        Object found = result.get("found");
+        return found instanceof Boolean && (Boolean) found;
+    }
+
+    private boolean automationResultClicked(Map<String, Object> result) {
+        Object clicked = result.get("clicked");
+        return clicked instanceof Boolean && (Boolean) clicked;
+    }
+
+    private double automationDouble(Object value, double fallback) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return fallback;
+    }
+
+    private void finishAutomationCommand(AutomationCommand command, AutomationResult result) {
+        AutomationResultBroadcaster.broadcast(this, command, result);
+        AutomationCommandRouter.onCommandFinished(webappID);
     }
 
     private Map<String, String> initCustomHeaders(boolean save_data) {
@@ -911,11 +1380,14 @@ public class WebViewActivity extends AppCompatActivity implements EasyPermission
                 wv.loadUrl("file:///android_asset/errorSite/error_" + langExtension + ".html");
             }
             wv.evaluateJavascript("document.addEventListener(\"visibilitychange\",function (event) {event.stopImmediatePropagation();},true);", null);
+            automationDomReady = true;
+            AutomationCommandRouter.onDomReady(webappID);
             super.onPageFinished(view, url);
         }
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            automationDomReady = false;
             adFilter.performScript(view, url);
             super.onPageStarted(view, url, favicon);
         }

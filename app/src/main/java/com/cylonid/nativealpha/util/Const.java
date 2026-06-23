@@ -25,6 +25,45 @@ public class Const {
 
     public static final int FAVICON_MIN_WIDTH = 96;
 
+    public static final String AUTOMATION_ACTION_COMMAND = "com.cylonid.nativealpha.action.AUTOMATION_COMMAND";
+
+    public static final String AUTOMATION_EXTRA_COMMAND = "automation_command";
+    public static final String AUTOMATION_EXTRA_PASSCODE = "automation_passcode";
+    public static final String AUTOMATION_EXTRA_REQUEST_ID = "request_id";
+    public static final String AUTOMATION_EXTRA_RESULT_ACTION = "result_broadcast_action";
+    public static final String AUTOMATION_EXTRA_LAUNCH_IF_INACTIVE = "launch_if_inactive";
+
+    public static final String AUTOMATION_EXTRA_DX = "dx";
+    public static final String AUTOMATION_EXTRA_DY = "dy";
+    public static final String AUTOMATION_EXTRA_X = "x";
+    public static final String AUTOMATION_EXTRA_Y = "y";
+    public static final String AUTOMATION_EXTRA_SCROLL_UNIT = "scroll_unit";
+    public static final String AUTOMATION_EXTRA_ZOOM_FACTOR = "zoom_factor";
+    public static final String AUTOMATION_EXTRA_JS = "js";
+    public static final String AUTOMATION_EXTRA_TEXT = "text";
+    public static final String AUTOMATION_EXTRA_SCROLL_INTO_VIEW = "scroll_into_view";
+
+    public static final String AUTOMATION_RESULT_OK = "ok";
+    public static final String AUTOMATION_RESULT_STATUS = "status";
+    public static final String AUTOMATION_RESULT_ERROR_CODE = "error_code";
+    public static final String AUTOMATION_RESULT_ERROR_MESSAGE = "error_message";
+    public static final String AUTOMATION_RESULT_JSON = "json_result";
+
+    public static final String AUTOMATION_COMMAND_ZOOM_IN = "zoom_in";
+    public static final String AUTOMATION_COMMAND_ZOOM_OUT = "zoom_out";
+    public static final String AUTOMATION_COMMAND_ZOOM_BY = "zoom_by";
+    public static final String AUTOMATION_COMMAND_SCROLL_BY = "scroll_by";
+    public static final String AUTOMATION_COMMAND_SCROLL_TO = "scroll_to";
+    public static final String AUTOMATION_COMMAND_RUN_JS = "run_js";
+    public static final String AUTOMATION_COMMAND_FIND_TEXT = "find_text";
+    public static final String AUTOMATION_COMMAND_CLICK_TEXT = "click_text";
+
+    public static final int AUTOMATION_MAX_QUEUE_SIZE_PER_WEBAPP = 10;
+    public static final int AUTOMATION_MAX_JS_LENGTH_BYTES = 64 * 1024;
+
+    public static final long AUTOMATION_NATIVE_TIMEOUT_MS = 10_000L;
+    public static final long AUTOMATION_DOM_TIMEOUT_MS = 30_000L;
+
     public static ArrayList<AdblockConfig> getDefaultAdBlockConfig() {
         ArrayList<AdblockConfig> list = new ArrayList<>();
         list.add(new AdblockConfig("Fanboy Ultimate List", "https://fanboy.co.nz/r/fanboy-ultimate.txt"));

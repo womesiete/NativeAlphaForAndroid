@@ -130,6 +130,28 @@
                             android:checked="@={settings.alwaysShowSoftwareButtons}"
                             android:text="@string/always_show_software_buttons" />
 
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/settings_bottom_innersection"
+                            android:text="@string/automation_passcode"
+                            android:textAppearance="@style/TextAppearance.AppCompat.Small"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/textAutomationPasscode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:autofillHints=""
+                            android:fontFamily="sans-serif"
+                            android:inputType="textPassword"
+                            android:text="@={settings.automationPasscode}" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/automation_passcode_hint"
+                            android:textAppearance="@style/TextAppearance.AppCompat.Small" />
 
                     </LinearLayout>
 

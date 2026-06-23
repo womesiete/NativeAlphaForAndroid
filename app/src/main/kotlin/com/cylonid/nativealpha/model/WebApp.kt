@@ -54,6 +54,7 @@ data class WebApp(var baseUrl: String, val ID: Int) {
     var isEnableZooming = false
     var isBiometricProtection = false
     var isAllowMediaPlaybackInBackground = false
+    var isAllowAutomationIntents = false
     var order = 0
     var alwaysUseFallbackContextMenu = false
     var adBlockSettings = mutableListOf<AdblockConfig>()
@@ -77,6 +78,7 @@ data class WebApp(var baseUrl: String, val ID: Int) {
         containerId = other.containerId
         isUseContainer = other.isUseContainer
         copySettings(other)
+        isAllowAutomationIntents = other.isAllowAutomationIntents
     }
 
 
