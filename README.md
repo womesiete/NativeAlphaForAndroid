@@ -15,8 +15,364 @@
   * Various settings (JavaScript, cookies, adblocking, location/camera/microphone access) can be set for every web app individually
   * Navigation with multi-touch gestures while browsing.
   * Opt-in adblock with user-selected filter lists.
+  * Optional Tasker/ADB automation interface for enabled Web Apps, supporting zoom, scroll, JavaScript dispatch, visible-text lookup, and direct DOM text clicks.
   * Less memory footprint and no privacy-invading app permissions in comparison to native apps
   * Dark mode for Android 10+
+
+## Automation intents for Tasker and ADB
+
+This fork adds an optional automation interface that can control enabled Web Apps through Android broadcast intents. It is intended for local automation tools such as Tasker or for debugging through ADB.
+
+Automation is disabled by default.
+
+### Security warning
+
+Automation intents can control a Web App that may already be logged in to a website. Depending on the command, automation can zoom, scroll, execute JavaScript, inspect visible DOM text, and click page elements.
+
+Only enable automation for Web Apps you intend to control. Anyone who knows the configured automation passcode and can send intents on the device may be able to control automation-enabled Web Apps.
+
+### Setup
+
+1. Open Native Alpha settings.
+2. Set a global **Automation passcode**.
+3. Open the target Web App settings.
+4. Enable **Allow automation intents** for that Web App.
+5. Make sure the Web App is not using a sandbox/container. Sandbox/container routing is not implemented for automation commands.
+6. For `run_js`, `find_text`, and `click_text`, make sure JavaScript is enabled for the Web App.
+
+### Broadcast target
+
+Use this broadcast action:
+
+```text
+com.cylonid.nativealpha.action.AUTOMATION_COMMAND
+```
+
+Release build component:
+
+```text
+Package: com.cylonid.nativealpha
+Class:   com.cylonid.nativealpha.automation.AutomationCommandReceiver
+Target:  Broadcast Receiver
+```
+
+Debug build component:
+
+```text
+Package: com.cylonid.nativealpha.debug
+Class:   com.cylonid.nativealpha.automation.AutomationCommandReceiver
+Target:  Broadcast Receiver
+```
+
+### Recommended Tasker usage
+
+Tasker's **Send Intent** action has a small number of extra fields, so the recommended format is to send one JSON payload extra:
+
+```text
+automation_payload:{...}
+```
+
+Tasker Send Intent example:
+
+```text
+Action:
+com.cylonid.nativealpha.action.AUTOMATION_COMMAND
+
+Extra:
+automation_payload:{"automation_command":"scroll_by","webappID":0,"automation_passcode":"PASSCODE","request_id":"scroll_800_001","result_broadcast_action":"com.example.tasker.NATIVE_ALPHA_RESULT","dx":0,"dy":800,"scroll_unit":"px"}
+
+Package:
+com.cylonid.nativealpha.debug
+
+Class:
+com.cylonid.nativealpha.automation.AutomationCommandReceiver
+
+Target:
+Broadcast Receiver
+```
+
+For release builds, change the package to:
+
+```text
+com.cylonid.nativealpha
+```
+
+### Result broadcasts
+
+If `result_broadcast_action` is included in the payload, Native Alpha broadcasts the command result to that action.
+
+Example result action:
+
+```text
+com.example.tasker.NATIVE_ALPHA_RESULT
+```
+
+Tasker can listen for that action with an Event Profile and read these extras:
+
+```text
+request_id
+automation_command
+webappID
+ok
+status
+error_code
+error_message
+json_result
+```
+
+`json_result` contains command-specific data, such as scroll positions, zoom status, or matched text coordinates.
+
+### Common payload fields
+
+Every command should include:
+
+```json
+{
+  "automation_command": "COMMAND_NAME",
+  "automation_passcode": "PASSCODE",
+  "request_id": "unique_request_id",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT"
+}
+```
+
+To target a specific Web App, include:
+
+```json
+"webappID": 0
+```
+
+If `webappID` is provided and the Web App is not active, Native Alpha attempts to launch it and then run the command once the WebView is ready.
+
+If `webappID` is omitted, the command targets the currently active Web App. If no Web App is active, the command fails with:
+
+```text
+activity_not_active
+```
+
+### Supported commands
+
+#### `scroll_by`
+
+Scrolls the native WebView by pixels or viewport units.
+
+Scroll down 800 pixels:
+
+```json
+{
+  "automation_command": "scroll_by",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "scroll_800_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "dx": 0,
+  "dy": 800,
+  "scroll_unit": "px"
+}
+```
+
+Scroll down one viewport:
+
+```json
+{
+  "automation_command": "scroll_by",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "scroll_viewport_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "dx": 0,
+  "dy": 1.0,
+  "scroll_unit": "viewport"
+}
+```
+
+`scroll_unit` may be:
+
+```text
+px
+viewport
+```
+
+For viewport units, `dy:1.0` means one WebView height, and `dx:1.0` means one WebView width.
+
+#### `scroll_to`
+
+Scrolls the native WebView to a target position.
+
+```json
+{
+  "automation_command": "scroll_to",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "scroll_to_top_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "x": 0,
+  "y": 0,
+  "scroll_unit": "px"
+}
+```
+
+#### `zoom_in`
+
+Zooms in one native WebView step.
+
+```json
+{
+  "automation_command": "zoom_in",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "zoom_in_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT"
+}
+```
+
+#### `zoom_out`
+
+Zooms out one native WebView step.
+
+```json
+{
+  "automation_command": "zoom_out",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "zoom_out_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT"
+}
+```
+
+#### `zoom_by`
+
+Applies a relative zoom factor.
+
+Example: zoom by 150% relative to the current zoom level:
+
+```json
+{
+  "automation_command": "zoom_by",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "zoom_150_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "zoom_factor": 1.5
+}
+```
+
+Example: zoom out to 80% of the current zoom level:
+
+```json
+{
+  "automation_command": "zoom_by",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "zoom_080_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "zoom_factor": 0.8
+}
+```
+
+`zoom_by` is relative. It does not set an absolute page zoom percentage.
+
+#### `run_js`
+
+Runs arbitrary JavaScript in the target WebView.
+
+```json
+{
+  "automation_command": "run_js",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "js_outline_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "js": "document.body.style.outline='3px solid red';"
+}
+```
+
+`run_js` is fire-and-forget. The result broadcast only reports whether JavaScript was dispatched to the WebView. It does not return the JavaScript result.
+
+The JavaScript payload is limited to 64 KB.
+
+#### `find_text`
+
+Finds the first visible exact text match in DOM order.
+
+```json
+{
+  "automation_command": "find_text",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "find_continue_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "text": "Continue"
+}
+```
+
+The result may include the matched element tag, text, rectangle, viewport information, and approximate WebView/screen coordinates in `json_result`.
+
+Matching behavior:
+
+```text
+Exact visible text only
+First match in DOM order
+Whitespace is normalized
+```
+
+#### `click_text`
+
+Finds the first visible exact text match in DOM order and clicks the element containing that text.
+
+```json
+{
+  "automation_command": "click_text",
+  "webappID": 0,
+  "automation_passcode": "PASSCODE",
+  "request_id": "click_continue_001",
+  "result_broadcast_action": "com.example.tasker.NATIVE_ALPHA_RESULT",
+  "text": "Continue",
+  "scroll_into_view": true
+}
+```
+
+`click_text` performs a DOM-level click on the matching element itself. It does not search for a clickable parent element.
+
+### ADB examples
+
+Linux/macOS example, scroll down 800 pixels:
+
+```bash
+adb shell am broadcast \
+  -a com.cylonid.nativealpha.action.AUTOMATION_COMMAND \
+  -n com.cylonid.nativealpha.debug/com.cylonid.nativealpha.automation.AutomationCommandReceiver \
+  --es automation_payload '{"automation_command":"scroll_by","webappID":0,"automation_passcode":"PASSCODE","request_id":"scroll_800_001","result_broadcast_action":"com.example.tasker.NATIVE_ALPHA_RESULT","dx":0,"dy":800,"scroll_unit":"px"}'
+```
+
+Windows PowerShell example, zoom by 150% relative:
+
+```powershell
+adb shell "am broadcast -a com.cylonid.nativealpha.action.AUTOMATION_COMMAND -n com.cylonid.nativealpha.debug/com.cylonid.nativealpha.automation.AutomationCommandReceiver --es automation_payload '{`"automation_command`":`"zoom_by`",`"webappID`":0,`"automation_passcode`":`"PASSCODE`",`"request_id`":`"zoom_150_001`",`"result_broadcast_action`":`"com.example.tasker.NATIVE_ALPHA_RESULT`",`"zoom_factor`":1.5}'"
+```
+
+For release builds, replace:
+
+```text
+com.cylonid.nativealpha.debug/com.cylonid.nativealpha.automation.AutomationCommandReceiver
+```
+
+with:
+
+```text
+com.cylonid.nativealpha/com.cylonid.nativealpha.automation.AutomationCommandReceiver
+```
+
+### Known limitations
+
+Automation does not support sandbox/container Web Apps.
+
+`run_js`, `find_text`, and `click_text` require JavaScript to be enabled for the target Web App.
+
+`find_text` and `click_text` operate on the regular DOM. They may not work for text rendered in canvas, images, cross-origin iframes, closed shadow roots, or virtualized content that has not been rendered yet.
+
+`click_text` uses a DOM-level click. Some websites require trusted user gestures and may ignore synthetic DOM clicks.
+
+The automation passcode is intended as a local control guard, not as a strong security boundary.
 
 ## Download Options
 [![IzzyOnDroid Download Badge](graphics/IzzyOnDroid.png)](https://apt.izzysoft.de/fdroid/index/apk/com.cylonid.nativealpha)
